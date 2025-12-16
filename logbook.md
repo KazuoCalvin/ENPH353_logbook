@@ -11,7 +11,7 @@ Initially, I thought I can use canny edge detection to find the edge. Maybe set 
 
 Next, from this info, extract the center of the path, easiest is take the weighted average of the brightness with index of pixel from the right.
 
-$ \sum_{i \in row} i * \text{Brightness} / \sum_{i \in row} \text{Brightness}$
+$$ \sum_{i \in row} i * \text{Brightness} / \sum_{i \in row} \text{Brightness}$$
 
 I take the row that is 1/3 from the bottom of the image, since that seemed to capture the sweet spot. Not too close that the output will oscillate crazy, not too far in future that the output is useless for a feedback system for future purposes.
 
@@ -61,7 +61,7 @@ I set the initial state as the center located at the center of the image.
 
 F represents the state transition, where 
 
-$\mathbb{x}_{k + 1} = F\mathbb{x}_k$
+$$\mathbb{x}_{k + 1} = F\mathbb{x}_k$$
 
 H represents the measurement matrix, where the diagonal entries mean that I am measuring both position and velocity for each prediction, that is somewhat independent from each other.
 
@@ -399,3 +399,59 @@ Next, I will make a one-hot encode to map the output vector to its corresponding
 
 
 I wrote this code to rotate, and scale the image randomly within the threshold, os that the training data varies a little even for the same character. This is not necessary for this lab, but will help in future cases when versatility is needed.
+
+#### Step 3: generate a crap ton of training data
+
+Next, I wrote a script to quickly generate 100 images per character as training data. Each images are scaled and rotated randomly with the function give above.
+
+I do not save the images in disk, and I have it all stored in RAM. This is because each images are relatively small, and 3600 images (ish) could probably stored in RAM without causing overflow. It is not ideal though, since it is hard to keep track of the training data when it gets swiped and regenerated for each training cycle. This is not the best practice. 
+
+I shuffle the training data so they are not correlated, and split it to training and val data with a ratio of 8:2. This number was suggested by chat GPT. The smaller the validation is, the the more correlated the val becomes, and it will not be a good metric for detecting over fitting.
+
+
+#### Step 4: Construct the CNN
+
+I used the CNN from the cats vs dogs example, since I did not have much time. 
+
+    #heavy one
+
+    conv_model = models.Sequential()
+    conv_model.add(layers.Conv2D(32, (3, 3), activation='relu',
+                             input_shape=(135, 106, 3)))
+    conv_model.add(layers.MaxPooling2D((2, 2)))
+    conv_model.add(layers.Conv2D(64, (3, 3), activation='relu'))
+    conv_model.add(layers.MaxPooling2D((2, 2)))
+    conv_model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+    conv_model.add(layers.MaxPooling2D((2, 2)))
+    conv_model.add(layers.Conv2D(128, (3, 3), activation='relu'))
+    conv_model.add(layers.MaxPooling2D((2, 2)))
+    conv_model.add(layers.Flatten())
+    conv_model.add(layers.Dropout(0.5))
+    conv_model.add(layers.Dense(512, activation='relu'))
+    conv_model.add(layers.Dense(36, activation='softmax'))
+
+This is huge, and it is overkill since it will output 512 feature maps for a relatively simple input, but it works fine, so I'll take it.
+
+#### Step 5: Training 
+
+Training in Tensorflow is a one-liner
+
+
+    history = conv_model.fit(X_train_dataset,
+                         Y_train_dataset,
+                         epochs=10,
+                         batch_size=32,
+                         validation_data=(X_val_dataset, Y_val_dataset))
+
+I trained for over 30 Epochs, which seemed to be good practice. 
+
+![Loss over Epochs](/home/kazuh/Documents/UBC/ENPH_353/ENPH353_logbook/lab8_losss.png)
+
+I plotted the confusion matrix, which turned out to be,
+
+![Confusion Matrix](/home/kazuh/Documents/UBC/ENPH_353/ENPH353_logbook/cm.png)
+
+
+## Lab 7
+
+#### Objective
