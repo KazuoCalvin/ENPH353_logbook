@@ -485,3 +485,49 @@ So basically it is a huge table of state, action from state, and its quality. I 
 I chose the most basic state and action space. The state space is 10-dimensional vector, where the camera feed is divided into 10 columns, and depending on which column the center of the road falls in, Ths state was assigned. `[1, 0, ..., 0]` means that the center is at the far left.
 
 The action is 3-dimensional, which is turn left, straight, or turn right. Each action is associated with an reward, where turning is a reward of 2, and going straight is a 4. I planned to change this so it gives reward based on how close the center is to the center of the frame, but ended up not having the time to do so.
+
+
+#### Step 4: Train
+
+The model takes quite a while to train. I ran it for 2 hours ish, and it seems to follow the line 1/4 ish through the course. The conversion is slow since it starts from the same spot every single episode, and it takes a while until it explores the whole course. Also the reward and epsilon discount can be tuned so it starts locking in to the more optimal action quicker.
+
+
+## Lab 8:
+
+#### Objective
+Learn how Deep RL works, and implement it for an inverse pendulum robot
+
+#### Step 1: Install miti code to environment
+
+Download download done
+
+#### Understand how Deep RL works
+
+Input Observation into NN, get action. 
+For each Episode, run several models, and use the best performing one as the "Supervisor". The results are kept for these ones, and the model is trained using cross entropy loss against the action, and the top-performing action. This makes the model converge to the top-performing actions as the model progress through episodes.
+
+#### Step 2: Understand state space
+
+4-dimensional vector, 
+`[x, x', theta, theta']`
+
+Action space, 2-dimensional vector
+`[left, right]`
+
+episode is terminated when theta exceeds a certain threshold. The reward is not changed from original code. I was planning to penalize the robot to go too far away from the origin, but I ended up not doing it.
+
+#### Step 3: the NN
+
+    self.net = nn.Sequential(
+        nn.Linear(obs_size, hidden_size),
+        nn.ReLU(),
+        nn.Linear(hidden_size, n_actions)
+        )
+
+    The NN is very small, with 4 -> 128 -> 2 as its dimensions. The output must be softmaxed so it becomes a valid number that represents probability.
+
+#### Step 4: Train the model
+
+The training is relatively fast, with 15 mins of training enabled the model to maintain steady vertical position for the inverse pendulum. However, it tends to go away from the origin, so I could change the reward function so it prefers to stay around the center.
+
+
