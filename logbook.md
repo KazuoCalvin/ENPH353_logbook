@@ -262,6 +262,61 @@ When `backward()` is called, the parents of a value is back propagated so a tree
 
 `def trace(root):` builds a computation graph just like how the topological tree is built when back propagation is done. This helps visualizing the process.
 
-#### Step 2: Neuron class
+#### Step 2: Neuron, Layer, MLP class
 
-This class implements a simple artificial neuron
+The neuron class implements a simple artificial neuron. This class wraps the Value class specifically so it acts like an neuron. It takes an input vector $x$, then computes $x* w + b$. Tanh is the default activation function, but I added a special version of tanh where a vertical scaling and vertical offset can be learned so it can fit a wider variation of values. 
+
+The weights are set to random values so it breaks symmetry.
+
+The Layer class bunches the neurons to form a single layout for a NN. Each neuron has the same input dimensions since it is meant to see the same input. `parameters()` return the learnable parameters so that the builtin `backward()` method can be used to execute back propagation on each learnable parameter. 
+
+The MLP class is a wrapper for the layer class, where it implements a whole NN with one class. For example, `MLP(5, [2, 2, 1])` will create a fully connected NN with 5 -> 2 -> 2 -> 1 neurons on each layer.
+
+I added a code to test this NN class, such as,
+
+    x = [2.0, 3.0, -1.0]
+    n = MLP(3, [4, 4, 1])
+    n(x)
+    draw_dot(n(x))
+
+    xs = [
+      [2.0, 3.0, -1.0],
+      [3.0, -1.0, 0.5],
+      [0.5, 1.0, 1.0],
+      [1.0, 1.0, -1.0],
+    ]
+    ys = [1.0, -1.0, -1.0, 1.0]  
+
+
+    for k in range(20):
+
+      # forward pass
+      ypred = [n(x) for x in xs]
+      loss = sum((yout - ygt)**2 for ygt, yout in zip(ys, ypred))
+
+      # backward pass
+      for p in n.parameters():
+        p.grad = 0.0
+      loss.backward()
+
+      # update
+      for p in n.parameters():
+        p.data += -0.1 * p.grad
+
+      print(k, loss.data)
+
+
+      xs = [
+      [2.0, 3.0, -1.0],
+      [3.0, -1.0, 0.5],
+      [0.5, 1.0, 1.0],
+      [1.0, 1.0, -1.0],
+    ]
+    ys = [1.0, -1.0, -1.0, 1.0] # desired targets
+
+    ypred = [n(x) for x in xs]
+    ypred
+
+
+So the NN is 3 -> 4 -> 4 -> 1 neurons for the layers. For each training loop, its forward pass is calculated, L2 norm is used to calculate the loss. Next, all the grads are zeroed. This is necessary to remove the old grad used in the previous loop. Here, I used a learning rate of 0.1, which was suggested by the tutorial video. There is a negative sign when updating the values, and this is so that the values are nudged in the direction that reduces the loss. Don't forget this one....
+
