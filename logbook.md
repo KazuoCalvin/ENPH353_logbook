@@ -139,7 +139,7 @@ When this node is executed, it initializes the node, set /Twist as a publisher, 
 
 So If I don't put `rospy.spin()` there, the node terminates right after setting everything up.
 
-I played around with different $k_p$ values, and 0.01 seemed to work the best.
+I played around with different k_p values, and 0.01 seemed to work the best.
 
 
 ## Lab 4
@@ -258,13 +258,13 @@ The Value class represents a numerical value that computation can be done with. 
 
 Every time an arithmetic is done between two values, an topological map is built, where it records its input, operation inside its self.
 
-When `backward()` is called, the parents of a value is back propagated so a tree of operations that leads to the value s built. This tree respects the order of operations and relationship between nodes. It sets the gradient of its self as 1, corresponding to $\frac{d\text{self}}{d\text{self}} = 1$, then adds the gradients of its parents recursively to mimic the chain rule.
+When `backward()` is called, the parents of a value is back propagated so a tree of operations that leads to the value s built. This tree respects the order of operations and relationship between nodes. It sets the gradient of its self as 1, corresponding to $$\frac{d\text{self}}{d\text{self}} = 1$$, then adds the gradients of its parents recursively to mimic the chain rule.
 
 `def trace(root):` builds a computation graph just like how the topological tree is built when back propagation is done. This helps visualizing the process.
 
 #### Step 2: Neuron, Layer, MLP class
 
-The neuron class implements a simple artificial neuron. This class wraps the Value class specifically so it acts like an neuron. It takes an input vector $x$, then computes $x* w + b$. Tanh is the default activation function, but I added a special version of tanh where a vertical scaling and vertical offset can be learned so it can fit a wider variation of values. 
+The neuron class implements a simple artificial neuron. This class wraps the Value class specifically so it acts like an neuron. It takes an input vector x, then computes $$x* w + b$$. Tanh is the default activation function, but I added a special version of tanh where a vertical scaling and vertical offset can be learned so it can fit a wider variation of values. 
 
 The weights are set to random values so it breaks symmetry.
 
@@ -331,13 +331,13 @@ y is neither a linear , increasing nor decreasing function in terms of the input
 
 I first came up with a quadratic activation function. Since quadratic can have a both increasing and decreasing part, it can fit this weird data. Given that we have to fit 3 datapoints, we only need 3 variables to tune (Ideally). So I initially used,
 
-$y = A(wx+b)^2$
+$$y = A(wx+b)^2$$
 
 where A, w, b is the learned variables. Mathematically this works, but in fact, it did not work well. It usually goes into a false minima, and staggers with a certain loss. I assumed this is because the constraints are so tight, since we are fitting 3 values with 3 parameters.
 
 Next, I asked Chat GPT what can possibly be the alternative. It suggested to use,
 
-$y = A \tanh{(wx+b)} + B$
+$$y = A \tanh{(wx+b)} + B$$
 
 where A, w, b, B are learned parameters. This is a more loose constraint, since we are using 4 parameters to fit 3 data points. This seemed to work well, and my loss did not stagger like the quadratics.
 
@@ -455,3 +455,33 @@ I plotted the confusion matrix, which turned out to be,
 ## Lab 7
 
 #### Objective
+Implement Q-learning for Reinforcement learning
+
+#### Step 1: Understand Q-learning
+
+What is Q-learning?
+
+"Q-learning learns an action-value function Q(s,a) that estimates the expected future reward for taking action a in state s, assuming optimal behavior afterward."
+
+So basically it is a huge table of state, action from state, and its quality. I update the Quality in the training stage so it is optimized.
+
+#### Step 2: Start implementing the Q-learning class
+
+`loadQ` and `saveQ` basically stores a python object by serializing it. In this case, it saves Q table.
+
+`getQ` fetches the Q value for a given state and action. The q table is a simple tuple, where the value can be searched with the (state, action) pair.
+
+`chooseAction` chooses the action, given a state. The most important parameter here is `self.epsilon`. This parameter decides how frequently this model takes random actions. It is set high (~0.95) for the initial stage of learning, so the robot can wander around, and explore different states and actions. This helps generalize the model without bias. In other cases, the action with the highest Q value is taken. `self.epsilon` can be set to a low value later on in the training stage, so the robot chooses the most optimal path almost all the time, and only occasionally it will take a random action, so the model gets some perturbation that it has to adapt to.
+
+`learn` implements the updating of Q-values. Each time an action is taken, this method is called to update the Q-value. For each step, It chooses an action based on the criteria above, executes it, and gets the updated state after the action. Based on this information, it computes the updated Q value using the Bellman-eq.
+
+    new_q = current_q + self.alpha * (reward + self.gamma * max_q_state2 - current_q)
+
+`reward` is given by the environment, `max_q_states2` is the maximum earnable Q-value from the new updated state, `self.alpha` as the learning rate. This means the Q-values are updated based on how much Q it can earn in the future, plus how much short term reward it got. 
+
+
+#### Step 3: Setup training environment
+
+I chose the most basic state and action space. The state space is 10-dimensional vector, where the camera feed is divided into 10 columns, and depending on which column the center of the road falls in, Ths state was assigned. `[1, 0, ..., 0]` means that the center is at the far left.
+
+The action is 3-dimensional, which is turn left, straight, or turn right. Each action is associated with an reward, where turning is a reward of 2, and going straight is a 4. I planned to change this so it gives reward based on how close the center is to the center of the frame, but ended up not having the time to do so.
