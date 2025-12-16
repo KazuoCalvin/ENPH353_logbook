@@ -320,3 +320,82 @@ I added a code to test this NN class, such as,
 
 So the NN is 3 -> 4 -> 4 -> 1 neurons for the layers. For each training loop, its forward pass is calculated, L2 norm is used to calculate the loss. Next, all the grads are zeroed. This is necessary to remove the old grad used in the previous loop. Here, I used a learning rate of 0.1, which was suggested by the tutorial video. There is a negative sign when updating the values, and this is so that the values are nudged in the direction that reduces the loss. Don't forget this one....
 
+#### The lab portion
+
+I want to fit 
+
+    xs = [[2], [3], [4]]
+    ys = [2, 1, -2]
+
+y is neither a linear , increasing nor decreasing function in terms of the input x, so a conventional activation function cannot be used. 
+
+I first came up with a quadratic activation function. Since quadratic can have a both increasing and decreasing part, it can fit this weird data. Given that we have to fit 3 datapoints, we only need 3 variables to tune (Ideally). So I initially used,
+
+$y = A(wx+b)^2$
+
+where A, w, b is the learned variables. Mathematically this works, but in fact, it did not work well. It usually goes into a false minima, and staggers with a certain loss. I assumed this is because the constraints are so tight, since we are fitting 3 values with 3 parameters.
+
+Next, I asked Chat GPT what can possibly be the alternative. It suggested to use,
+
+$y = A \tanh{(wx+b)} + B$
+
+where A, w, b, B are learned parameters. This is a more loose constraint, since we are using 4 parameters to fit 3 data points. This seemed to work well, and my loss did not stagger like the quadratics.
+
+However, for higher learning rates than 0.02 seemed to not work, and it often had the same issue of going into a false minima. This is probably because many local minima are pretty close together that high learning rate can nudge the parameters into a separate minima, like tunneling.
+
+
+
+## Lab 6
+#### Objective
+Make a CNN that reads characters off car plates
+
+#### Disclaimer
+I don't have much time for this lab, so it will be jank...
+
+#### Step 1: Generate training data
+
+Miti had the code to generate the car plates with a specific font and color, so I will take advantage of that. I think that is the most consistent way to generate a homogeneous dataset. 
+
+    def draw_char(char):
+
+      h, w = 135, 106
+      background = Image.new("RGB", (w, h), (255, 255, 255))
+
+      draw = ImageDraw.Draw(background)
+      monospace = ImageFont.truetype(font="/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",size=165)
+
+      draw.text(xy = (0, -10), text=char, fill=(255, 0, 0), font=monospace)
+
+      return np.array(background)
+
+    test = draw_char('0')
+    cv2_imshow(test)
+
+This will be a function that can generate an image of a character with the font and color.
+
+Next, I will make a one-hot encode to map the output vector to its corresponding character.
+
+#### Step 2: randomization for minimizing overfitting
+
+    import random
+
+    def random_rotate_scale(img, max_angle=20, scale_range=(0.8, 1.1)):
+        h, w = img.shape[:2]
+
+        # Pick random rotation angle and scale factor
+        angle = random.uniform(-max_angle, max_angle)
+        scale = random.uniform(*scale_range)
+
+        # Compute rotation matrix about the image center
+        center = (w / 2, h / 2)
+        M = cv2.getRotationMatrix2D(center, angle, scale)
+
+        # Apply the affine transform (keep size same as input)
+        rotated_scaled = cv2.warpAffine(img, M, (w, h),
+                                    flags=cv2.INTER_LINEAR,
+                                    borderMode=cv2.BORDER_CONSTANT,
+                                    borderValue=(255, 255, 255))
+        return rotated_scaled
+
+
+I wrote this code to rotate, and scale the image randomly within the threshold, os that the training data varies a little even for the same character. This is not necessary for this lab, but will help in future cases when versatility is needed.
